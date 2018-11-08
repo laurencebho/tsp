@@ -31,6 +31,7 @@ def select_node(node, tour, size, M, pheromones):
 	choice = random.random() * largest
 	for i, weight in enumerate(weights):
 		if choice - weight < 0:
+			print(i)
 			return i
 
 
