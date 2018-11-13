@@ -28,17 +28,18 @@ def get_random_neighbour(s):
 
 def get_random_neighbour2(s):
 	size = len(s)
-	a = int(random.random() * (size - 1) // 1) + 1
+	a = random.randint(1, size-1) #int(random.random() * (size - 1) // 1) + 1
 	while True:
-		b = int(random.random() * (size - 1)  // 1) + 1
+		b = random.randint(1, size-1) #int(random.random() * (size - 1)  // 1) + 1
 		if a != b:
 			break
 	if b < a:
 		a, b = b, a
 	s_prime = s[:] #create hard copy of s
-	r = int((b-a) // 2)
-	for i in range(r):
-		s_prime[a + i] , s_prime[b-i] = s_prime[b - i], s_prime[a + i]
+	s_prime[a:b + 1] = reversed(s_prime[a:b + 1])
+	#r = int((b-a) // 2)
+	#for i in range(r):
+	#	s_prime[a + i] , s_prime[b-i] = s_prime[b - i], s_prime[a + i]
 	return s_prime
 
 def get_random_neighbour3(s):
@@ -50,12 +51,14 @@ def get_random_neighbour3(s):
 	return s_prime
 
 def temperature(k, t, t_start):
-	eps = 0.000001
+	eps = 0.00001
 	#return (t_start / (1 + eps * k ** 2))
 	#if t < t_start * 0.7:
-	return t_start / (exp(1 + k * eps))
-	#return t - t_start * 0.0000005
-	#return t_start / (1 + log(1 + k))
+	#return t_start / (1 + exp(k * eps))
+	if t < 5:
+		return t - eps
+	#return t_start / (1 + k * eps)
+	return t_start / (1 + eps * k * log(1 + k))
 
 def choose_start_temp(s, M): #given arbitrary start state, tries to find an acceptable start temperature
 #this is computed as the max energy difference between s and 20 other randomly chosen neighbours
@@ -91,7 +94,7 @@ def annealing(filename):
 	T = T_start
 	print("Start temperature: " + str(T_start))
 	k = 0
-	while T > 0.0001:
+	while T > 0.001:
 		T = temperature(k, T, T_start)
 		s_prime = get_random_neighbour2(s)
 		new_length = E(s_prime, M)
@@ -110,7 +113,7 @@ def annealing(filename):
 	return s_best
 
 for i in range(10):
-	annealing(files[i])
+	annealing(files[5])
 
 
 '''
