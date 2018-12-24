@@ -1,5 +1,5 @@
 import re
-
+#REQUIRES TOUR FILES IN DATA/
 files = ["data/NEWAISearchfile012.txt", "data/NEWAISearchfile017.txt",
  "data/NEWAISearchfile021.txt", "data/NEWAISearchfile026.txt", 
  "data/NEWAISearchfile042.txt", "data/NEWAISearchfile048.txt", 

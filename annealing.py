@@ -15,7 +15,7 @@ def E(s, M):
 	e += M[s[-1]][s[0]] #edge back to beginning
 	return e
 
-def get_random_neighbour(s):
+def get_random_neighbour2(s):
 	size = len(s)
 	a = int(random.random() * size // 1)
 	while True:
@@ -26,20 +26,17 @@ def get_random_neighbour(s):
 	s_prime[a], s_prime[b] = s_prime[b], s_prime[a] #swap 2 nodes
 	return s_prime
 
-def get_random_neighbour2(s):
+def get_random_neighbour(s): #essentially 2-opt
 	size = len(s)
-	a = random.randint(1, size-1) #int(random.random() * (size - 1) // 1) + 1
+	a = random.randint(1, size-1)
 	while True:
-		b = random.randint(1, size-1) #int(random.random() * (size - 1)  // 1) + 1
+		b = random.randint(1, size-1)
 		if a != b:
 			break
 	if b < a:
 		a, b = b, a
 	s_prime = s[:] #create hard copy of s
 	s_prime[a:b + 1] = reversed(s_prime[a:b + 1])
-	#r = int((b-a) // 2)
-	#for i in range(r):
-	#	s_prime[a + i] , s_prime[b-i] = s_prime[b - i], s_prime[a + i]
 	return s_prime
 
 def get_random_neighbour3(s):
@@ -51,43 +48,55 @@ def get_random_neighbour3(s):
 	return s_prime
 
 def temperature(k, t, t_start):
-	eps = 0.00001
-	#return (t_start / (1 + eps * k ** 2))
-	#if t < t_start * 0.7:
-	#return t_start / (1 + exp(k * eps))
+	eps = 0.0004
+	return t_start / (1 + exp(k * eps))
+	
 	if t < 5:
 		return t - eps
+	#return t / (1 + 0.00001 * t)
+	#return t_start * (1 + 1/1500) ** -k
 	#return t_start / (1 + k * eps)
-	return t_start / (1 + eps * k * log(1 + k))
+	#return t_start / (1 + eps * k * log(1 + k))
+	#t_start / (1 + log(1+k))
 
 def choose_start_temp(s, M): #given arbitrary start state, tries to find an acceptable start temperature
-#this is computed as the max energy difference between s and 20 other randomly chosen neighbours
+#this is computed as the max energy difference between s and 1000 other randomly chosen neighbours
 	largest = 0
-	for _ in range(20):
+	for _ in range(1000):
 		s_prime = get_random_neighbour2(s)
 		diff = abs(E(s_prime, M) - E(s, M))
 		if diff > largest:
 			largest = diff
 	return largest
 
-def choose_start_temp_2(state, M): #picks temp to match an acceptance ratio
-	s = state[:]
-	chi = 0.8
-	successes = 0
-	failures = 0
-	for _ in range(1000):
-		s_prime = get_random_neighbour(s)
-		if P(E(s, M), E(s_prime, M), T) >= random.random():
-			s = s_prime
-			successes += 1
-		else:
-			failures += 1
+def opt_2(tour, size, M):
+	length = get_tour_length(tour, M)
+	best = length
+	best_tour = tour
+	for i in range(size - 2):
+		for j in range(i + 1, size - 1):
+			neighbour = tour[:] #create hard copy of tour
+			neighbour[i:j + 1] = reversed(neighbour[i:j + 1])
+			neighbour_length = length - M[tour[i - 1]][tour[i]] - M[tour[j]][tour[-1 * (size - j - 1)]] + M[tour[i - 1]][tour[j]] + M[tour[i]][tour[-1 * (size - j - 1)]]
+			#print(neighbour_length - get_tour_length(neighbour, M))
+			#print(str(i) + ", " + str(j) + ", " + str(-1 * (size - j - 1)))
+			if  neighbour_length < best:
+				best  = neighbour_length
+				best_tour = neighbour
+	return best_tour, best
+
+def get_tour_length(tour, M):
+	dist = 0
+	for i in range(-1, len(tour) - 1):
+		dist += M[tour[i]][tour[i + 1]]
+	return dist
+
 
 def annealing(filename):
 	start = time.time()
 	name, size, M = read_file(filename)
 	s = [i for i in range(size)]
-	s_best = [i for i in range(size)]
+	s_best = s[:]
 	curr_length = E(s, M)
 	best_length = E(s_best, M)
 	T_start = choose_start_temp(s, M)
@@ -95,9 +104,11 @@ def annealing(filename):
 	print("Start temperature: " + str(T_start))
 	k = 0
 	while T > 0.001:
+		print(str(best_length) + " " + str(T))
 		T = temperature(k, T, T_start)
-		s_prime = get_random_neighbour2(s)
-		new_length = E(s_prime, M)
+		s_prime = get_random_neighbour(s)
+		s_prime, new_length = opt_2(s_prime, size, M) #perform local search to find best neighbour
+		#new_length = E(s_prime, M)
 		if P(curr_length, new_length, T) >= random.random():
 			s = s_prime
 			curr_length = new_length
@@ -110,13 +121,16 @@ def annealing(filename):
 	print(best_length)
 	print(s_best)
 	print("Time taken: " + str(end - start))
-	return s_best
+	save_tour(size, best_length, s_best)
+	return best_length, s_best
 
-for i in range(10):
-	annealing(files[5])
+def save_tour(size, dist, tour):
+	with open("./annealing" + str(size) + "_" + str(dist) + ".txt", "w+") as f:
+		f.write("dist: " + str(dist) + "\n")
+		for i, _ in enumerate(tour):
+			tour[i] += 1
+		f.write(str(tour))
 
-
-'''
-NOTES:
-	> Kirkpatrick paper suggests largest abs(E' - E) as the starting temperature. Currently trying a simplified version of this
-'''
+if __name__ == "__main__":
+	for i in range(10):
+		annealing(files[i])
